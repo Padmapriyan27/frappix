@@ -56,7 +56,8 @@ All notable changes are recorded here. The format follows
 ### Security
 
 - Downloads (`download`, `download_to`) accept only Frappe's file locations,
-  `/files/...` and `/private/files/...`. Before, a `file_url` taken from
+  `/files/...` and `/private/files/...`, without empty segments (`//`) or
+  control characters. Before, a `file_url` taken from
   document data could point at any route on the site, such as
   `/api/resource/User/Administrator`, which the client would then call with
   its own credentials.

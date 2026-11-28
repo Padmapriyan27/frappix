@@ -163,9 +163,14 @@ def file_path(file_url: str) -> str:
     if not file_url.startswith(_FILE_PREFIXES):
         raise ConfigurationError("file_url must be a stored file under /files/ or /private/files/.")
     _require_utf8(file_url, "file_url")
+    if any(ord(ch) < 0x20 or ord(ch) == 0x7F for ch in file_url):
+        raise ConfigurationError("file_url must not contain control characters.")
     segments = file_url.split("/")
     if any(segment in {".", ".."} for segment in segments):
         raise ConfigurationError("file_url must not contain '.' or '..' segments.")
+    # Frappe never stores empty segments; servers normalise "a//b" differently.
+    if "" in segments[1:-1]:
+        raise ConfigurationError("file_url must not contain empty segments ('//').")
     return "/".join(quote(segment, safe="") for segment in segments)
 
 
