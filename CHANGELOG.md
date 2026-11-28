@@ -48,7 +48,8 @@ All notable changes are recorded here. The format follows
   guest it logs in again once and repeats the request once (safe for
   writes, since a request refused as unauthenticated never ran). A genuine
   permission error is raised unchanged, without a second login. Concurrent
-  callers renew the session only once. Before, long-running programs using
+  callers renew the session only once, and requests whose refusal arrives
+  while another caller is logging in again wait for that login. Before, long-running programs using
   `PasswordAuth` failed with `AuthenticationError` for good once the session
   timed out.
 
@@ -59,9 +60,11 @@ All notable changes are recorded here. The format follows
   document data could point at any route on the site, such as
   `/api/resource/User/Administrator`, which the client would then call with
   its own credentials.
-- Request bodies are no longer part of `repr()`. A failed password login
-  left the password in a local variable's repr, which error trackers that
-  capture local variables (Sentry and others) would record.
+- Request bodies are no longer part of `repr()`, and an error raised while
+  logging in carries no chained network-library exception. A failed
+  password login, whether refused or cut off by a network error, left the
+  password in local variables that error trackers which capture them
+  (Sentry and others) would record.
 - An `ssl.SSLContext` passed as `verify` must require certificates and check
   hostnames; one that does not is refused, like `verify=False`.
 - Only `gzip, deflate` is offered in `Accept-Encoding`, the header can no
