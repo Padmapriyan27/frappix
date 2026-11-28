@@ -241,7 +241,17 @@ class AsyncClient(ClientCore):
         if self._needs_login:
             async with self._login_lock:
                 if self._needs_login and isinstance(self._auth, PasswordAuth):
-                    await self._run(ops.login(self._auth.username, self._auth.password.reveal()))
+                    try:
+                        await self._run(
+                            ops.login(self._auth.username, self._auth.password.reveal())
+                        )
+                    except FrappexError as error:
+                        # Drop the chained httpx exception: its traceback frames
+                        # hold the login body, password included, where error
+                        # trackers that record local variables would find it.
+                        error.__cause__ = error.__context__ = None
+                        error.__suppress_context__ = True
+                        raise
                     self._logged_in = True
                     self._session += 1
         return self._session
@@ -277,7 +287,11 @@ class AsyncClient(ClientCore):
         except (AuthenticationError, PermissionDeniedError):
             # A request refused as unauthenticated never ran, so repeating it
             # once on a fresh session is safe even for writes.
-            if self._session == session and not await self._session_expired():
+            # Another caller may be renewing the session right now (it has
+            # cleared _logged_in); then wait for that login instead of failing.
+            if not isinstance(self._auth, PasswordAuth) or (
+                self._session == session and self._logged_in and not await self._session_expired()
+            ):
                 raise
             await self._renew_session(session)
             return await self._run(operation)
@@ -641,7 +655,11 @@ class AsyncClient(ClientCore):
         try:
             return await self._stream_once(request, target, max_bytes, content_type)
         except (AuthenticationError, PermissionDeniedError):
-            if self._session == session and not await self._session_expired():
+            # Another caller may be renewing the session right now (it has
+            # cleared _logged_in); then wait for that login instead of failing.
+            if not isinstance(self._auth, PasswordAuth) or (
+                self._session == session and self._logged_in and not await self._session_expired()
+            ):
                 raise
             await self._renew_session(session)
             return await self._stream_once(request, target, max_bytes, content_type)

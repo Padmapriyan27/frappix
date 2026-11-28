@@ -25,6 +25,7 @@ from frappex_client import (
     PasswordAuth,
     RequestTimeoutError,
     RetryPolicy,
+    TransportError,
     UnexpectedResponseError,
 )
 from frappex_client._protocol import Request, file_path
@@ -94,6 +95,37 @@ class TestBodiesStayOutOfReprs:
             else:
                 pytest.fail("login should have failed")
         assert "hunter2-very-secret" not in rendered
+
+
+class TestLoginFailuresLeakNoPassword:
+    @pytest.mark.parametrize(
+        "failure",
+        [
+            httpx.ConnectError("refused"),
+            httpx.ReadTimeout("slow"),
+            httpx.RemoteProtocolError("bad"),
+        ],
+    )
+    def test_a_network_failure_during_login_leaves_no_password_anywhere(
+        self, failure: Exception
+    ) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise failure
+
+        auth = PasswordAuth("ann@example.com", "hunter2-very-secret")
+        with Client(URL, auth, transport=httpx.MockTransport(handler), retry=ONE_ATTEMPT) as client:
+            try:
+                client.get_doc("ToDo", "T-1")
+            except TransportError as error:
+                caught = error
+            else:
+                pytest.fail("login should have failed")
+        rendered = "".join(
+            traceback.TracebackException.from_exception(caught, capture_locals=True).format()
+        )
+        assert "hunter2-very-secret" not in rendered
+        assert caught.__cause__ is None
+        assert caught.__context__ is None
 
 
 class TestTlsContexts:
