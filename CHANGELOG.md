@@ -84,6 +84,11 @@ All notable changes are recorded here. The format follows
 - A DocType name, document name or file URL that is not valid Unicode (a
   lone surrogate) raises `ConfigurationError` instead of `UnicodeEncodeError`
   from inside the URL encoder. Found by fuzzing.
+- Release files are signed with Sigstore and attached, with their
+  `.sigstore.json` bundles, to the GitHub release; SECURITY.md shows how to
+  verify them.
+- The code that handles untrusted input is fuzzed in CI with ClusterFuzzLite
+  (Atheris targets in `fuzz/`).
 - Requires Python 3.10.7 or later, the first 3.10 release that limits
   conversion of huge numbers (CVE-2020-10735).
 
