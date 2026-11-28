@@ -5,8 +5,8 @@
 [![Security](https://github.com/Padmapriyan27/frappex-client/actions/workflows/security.yml/badge.svg)](https://github.com/Padmapriyan27/frappex-client/actions/workflows/security.yml)
 [![CodeQL](https://github.com/Padmapriyan27/frappex-client/actions/workflows/codeql.yml/badge.svg)](https://github.com/Padmapriyan27/frappex-client/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Padmapriyan27/frappex-client/badge)](https://scorecard.dev/viewer/?uri=github.com/Padmapriyan27/frappex-client)
-[![PyPI version](https://img.shields.io/pypi/v/frappex-client)](https://pypi.org/project/frappex-client/)
-[![Python versions](https://img.shields.io/pypi/pyversions/frappex-client)](https://pypi.org/project/frappex-client/)
+[![PyPI version](https://img.shields.io/pypi/v/frappex-client?cacheSeconds=3600)](https://pypi.org/project/frappex-client/)
+[![Python versions](https://img.shields.io/pypi/pyversions/frappex-client?cacheSeconds=3600)](https://pypi.org/project/frappex-client/)
 [![Downloads](https://static.pepy.tech/badge/frappex-client)](https://pepy.tech/project/frappex-client)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
