@@ -5,6 +5,7 @@ data other people control. Whatever they contain, the path must stay on the
 intended endpoint, or the call must be refused with ConfigurationError.
 """
 
+import contextlib
 import sys
 
 import atheris
@@ -17,6 +18,7 @@ FORBIDDEN = ("?", "#", "\\", "//", "/../", "/./", "\r", "\n", "\x00")
 
 
 def check(path: str, prefix: str) -> None:
+    """Fail unless ``path`` stays under ``prefix`` and has no unsafe parts."""
     if not path.startswith(prefix):
         raise AssertionError(f"{path!r} left {prefix!r}")
     if any(token in path for token in FORBIDDEN) or path.endswith(("/..", "/.")):
@@ -37,10 +39,8 @@ def test_one_input(data: bytes) -> None:
             raise AssertionError(f"a name escaped its segment: {path!r}")
     except ConfigurationError:
         pass
-    try:
+    with contextlib.suppress(ConfigurationError):
         check(method_path(method), "/api/method/")
-    except ConfigurationError:
-        pass
     try:
         path = file_path(file_url)
         if not path.startswith(("/files/", "/private/files/")):

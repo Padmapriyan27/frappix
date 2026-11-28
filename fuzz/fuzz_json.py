@@ -17,6 +17,7 @@ with atheris.instrument_imports():
 
 
 def same(a: Any, b: Any) -> bool:
+    """Compare decoded values exactly and iteratively, NaN equal to NaN."""
     pending = [(a, b)]
     while pending:
         x, y = pending.pop()
@@ -39,6 +40,7 @@ def same(a: Any, b: Any) -> bool:
 
 
 def stdlib(body: bytes) -> Any:
+    """Decode the way the library does without orjson."""
     try:
         return json.loads(body)
     except (ValueError, UnicodeDecodeError, RecursionError):

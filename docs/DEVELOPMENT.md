@@ -169,6 +169,30 @@ set -a && . /tmp/frappex-bench/test.env && set +a
 uv run pytest tests/integration
 ```
 
+## Fuzzing
+
+`fuzz/` holds [Atheris](https://github.com/google/atheris) fuzz targets for
+the code that handles untrusted input:
+
+| Target | Invariant |
+|---|---|
+| `fuzz_decode.py` | Any status, headers and body give a dict or a `FrappexError`; tracebacks stay out of `str(error)` |
+| `fuzz_paths.py` | Any DocType, document, method name or file URL gives a path on the intended endpoint, or `ConfigurationError` |
+| `fuzz_headers.py` | Accepted extra headers never carry line breaks or replace a managed header |
+| `fuzz_json.py` | With orjson installed, decoding gives exactly what `json` gives |
+
+CI runs them with ClusterFuzzLite (`.github/workflows/cflite.yml`): five
+minutes on the changed code of each pull request, thirty minutes weekly. To
+run one locally (Atheris has wheels for Python 3.12 and later):
+
+```bash
+uv venv -p 3.12 /tmp/fuzz && uv pip install -p /tmp/fuzz/bin/python atheris orjson -e .
+(cd fuzz && /tmp/fuzz/bin/python -I fuzz_paths.py -max_total_time=60)
+```
+
+The paths target found its first bug within seconds: a lone surrogate in a
+name raised `UnicodeEncodeError` instead of `ConfigurationError`.
+
 ## Benchmarks
 
 `benchmarks/client_overhead.py` measures the time the library itself adds
