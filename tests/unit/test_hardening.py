@@ -45,10 +45,15 @@ class TestDownloadsStayInFileLocations:
             "/files",
             "/filesystem/a.pdf",
             "/private/filesx/a.pdf",
+            "/files/a//b.pdf",
+            "/files/a.pdf\x00",
+            "/files/a\x0cb.pdf",
+            "/files/a\x7fb.pdf",
+            "/private/files//a.pdf",
         ],
     )
     def test_other_routes_are_refused(self, url: str) -> None:
-        with pytest.raises(ConfigurationError, match="/files/"):
+        with pytest.raises(ConfigurationError, match="file_url"):
             file_path(url)
 
     @pytest.mark.parametrize(
