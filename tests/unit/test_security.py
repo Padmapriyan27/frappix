@@ -255,3 +255,18 @@ class TestHostileRepliesCannotCrashTheClient:
         with pytest.raises(FrappexError) as caught:
             decode(RawResponse(status, headers, json.dumps(payload).encode()))
         assert isinstance(str(caught.value), str)
+
+
+@pytest.mark.parametrize(
+    ("call", "argument"),
+    [
+        (lambda v: resource_path(v), "To\ud9f0Do"),
+        (lambda v: resource_path("ToDo", v), "T-\udc00"),
+        (lambda v: file_path(v), "/files/\ud800.pdf"),
+        (lambda v: method_path(v), "app.\ud800"),
+    ],
+)
+def test_invalid_unicode_is_a_configuration_error(call: Any, argument: str) -> None:
+    """Found by fuzzing: lone surrogates raised UnicodeEncodeError."""
+    with pytest.raises(ConfigurationError):
+        call(argument)

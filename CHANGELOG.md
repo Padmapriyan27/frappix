@@ -80,6 +80,9 @@ All notable changes are recorded here. The format follows
   included. The sync client checks it each time part of the body arrives,
   so at worst it ends one read timeout late; its header phase stays bounded
   by the read timeout and the HTTP library's header size limit.
+- A DocType name, document name or file URL that is not valid Unicode (a
+  lone surrogate) raises `ConfigurationError` instead of `UnicodeEncodeError`
+  from inside the URL encoder. Found by fuzzing.
 - Requires Python 3.10.7 or later, the first 3.10 release that limits
   conversion of huge numbers (CVE-2020-10735).
 

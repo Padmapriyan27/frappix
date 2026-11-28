@@ -94,6 +94,18 @@ class RawResponse:
     http_version: str = "HTTP/1.1"
 
 
+def _require_utf8(value: str, what: str) -> None:
+    """Refuse text that cannot be sent as UTF-8, such as a lone surrogate.
+
+    Found by fuzzing: such a name raised UnicodeEncodeError from the URL
+    encoder instead of the library's own error.
+    """
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError:
+        raise ConfigurationError(f"{what} is not valid Unicode text.") from None
+
+
 def _segment(value: str, what: str) -> str:
     """Percent-encode ``value`` so it stays a single URL path segment.
 
@@ -105,6 +117,7 @@ def _segment(value: str, what: str) -> str:
         raise ConfigurationError(f"{what} must be a non-empty string.")
     if value in {".", ".."}:
         raise ConfigurationError(f"{what} must not be '.' or '..'.")
+    _require_utf8(value, what)
     return quote(value, safe="")
 
 
@@ -149,6 +162,7 @@ def file_path(file_url: str) -> str:
         raise ConfigurationError("file_url must be a plain site-relative path.")
     if not file_url.startswith(_FILE_PREFIXES):
         raise ConfigurationError("file_url must be a stored file under /files/ or /private/files/.")
+    _require_utf8(file_url, "file_url")
     segments = file_url.split("/")
     if any(segment in {".", ".."} for segment in segments):
         raise ConfigurationError("file_url must not contain '.' or '..' segments.")
