@@ -550,7 +550,8 @@ class ListPager:
             and (fields is None or all(f == "*" or _PLAIN_FIELD.fullmatch(f) for f in fields))
         )
         if self._keyset:
-            wanted = list(fields) if fields is not None else ["name"]
+            # Frappe returns name when no fields are asked for; so do we.
+            wanted = list(fields) if fields else ["name"]
             every = "*" in wanted
             self._added = [] if every else [f for f in _KEYSET_FIELDS if f not in wanted]
             self._fields: list[str] | None = wanted + self._added
@@ -562,6 +563,7 @@ class ListPager:
             self._filters = filters
             self._order_by = order_by or STABLE_ORDER
         self._offset = 0
+        self._returned = 0
         self._after: tuple[Any, Any] | None = None
 
     @property
@@ -602,24 +604,31 @@ class ListPager:
     def accept(self, rows: list[Document]) -> list[Document]:
         """Take a page's rows and return the ones to hand to the caller."""
         self.done = len(rows) < self._page_size
+        self._returned += len(rows)
         if not self._keyset:
             self._offset += self._page_size
-            return rows
-        if rows:
+        elif rows:
             last = rows[-1]
             creation, name = last.get("creation"), last.get("name")
-            if creation is None or name is None:
+            if name is None:
                 raise UnexpectedResponseError(
-                    "A listed row has no name or creation, so paging cannot continue.",
-                    status_code=200,
+                    "A listed row has no name, so paging cannot continue.", status_code=200
                 )
-            if (creation, name) == self._after:
+            if creation is None:
+                # Rows written outside Frappe can lack a creation timestamp,
+                # and no keyset seeks past them. They sort first, so every
+                # row returned so far is a prefix of the same order: continue
+                # from there by offset.
+                self._keyset = False
+                self._offset = self._returned
+            elif (creation, name) == self._after:
                 # The site ignored the keyset filters; stop rather than loop.
                 raise UnexpectedResponseError(
                     "The site returned the same rows again, so paging cannot continue.",
                     status_code=200,
                 )
-            self._after = (creation, name)
+            else:
+                self._after = (creation, name)
         if self._added:
             rows = [{k: v for k, v in row.items() if k not in self._added} for row in rows]
         return rows

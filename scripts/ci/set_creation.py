@@ -5,6 +5,8 @@ paging tests need many rows that share one. Run with the site's Python from
 the bench ``sites`` directory:
 
     python set_creation.py <site> <doctype> <timestamp> <name> [<name> ...]
+
+A timestamp of NULL clears creation, as rows written outside Frappe can be.
 """
 
 import sys
@@ -17,8 +19,9 @@ def main(site: str, doctype: str, timestamp: str, names: list[str]) -> None:
     frappe.init(site=site, sites_path=".")
     frappe.connect()
     try:
+        value = None if timestamp == "NULL" else timestamp
         frappe.db.set_value(
-            doctype, {"name": ("in", names)}, "creation", timestamp, update_modified=False
+            doctype, {"name": ("in", names)}, "creation", value, update_modified=False
         )
         frappe.db.commit()
     finally:
