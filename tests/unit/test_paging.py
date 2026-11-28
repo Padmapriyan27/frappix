@@ -25,6 +25,8 @@ class Table:
 
     def _match(self, row: dict[str, Any], condition: list[Any]) -> bool:
         field, op, value = condition[-3:]
+        if row[field] is None:  # SQL: NULL compares false
+            return False
         if op == "=":
             return bool(row[field] == value)
         if op == ">=":
@@ -48,7 +50,8 @@ class Table:
             if all(self._match(r, c) for c in filters)
             and (not or_filters or any(self._match(r, c) for c in or_filters))
         ]
-        rows.sort(key=lambda r: (r["creation"], r["name"]))
+        # MariaDB sorts NULL first in ascending order.
+        rows.sort(key=lambda r: (r["creation"] is not None, r["creation"] or "", r["name"]))
         start = int(params["limit_start"])
         rows = rows[start : start + int(params["limit_page_length"])]
         fields = json.loads(params.get("fields", '["name"]'))
@@ -192,12 +195,12 @@ class TestPagingFailures:
         with Client(URL, transport=transport) as client, pytest.raises(UnexpectedResponseError):
             list(client.iter_list("ToDo", page_size=2))
 
-    def test_rows_without_creation_are_rejected(self) -> None:
+    def test_rows_without_a_name_are_rejected(self) -> None:
         transport = httpx.MockTransport(
-            lambda r: httpx.Response(200, json={"data": [{"name": "A"}]})
+            lambda r: httpx.Response(200, json={"data": [{"creation": "1"}]})
         )
         with Client(URL, transport=transport) as client, pytest.raises(UnexpectedResponseError):
-            list(client.iter_list("ToDo"))
+            list(client.iter_list("ToDo", page_size=1))
 
     @pytest.mark.parametrize("page_size", [0, -1, True])
     def test_page_size_is_checked(self, page_size: int) -> None:
@@ -237,3 +240,34 @@ class TestPagerChoices:
             "parent": None,
         }
         assert ListPager("ToDo", **{**settings, **options}).keyset is keyset
+
+
+class TestEdgeCases:
+    def test_no_fields_means_names(self, kind: str) -> None:
+        table = Table(make_rows([0, 1, 2]))
+        assert collect(table, kind, fields=[], page_size=2) == [
+            {"name": "T-0000"},
+            {"name": "T-0001"},
+            {"name": "T-0002"},
+        ]
+
+    def test_rows_without_creation_switch_to_offset_paging(self, kind: str) -> None:
+        rows = make_rows(list(range(12)))
+        for row in rows[:7]:  # written outside Frappe, no timestamp
+            row["creation"] = None
+        table = Table(rows)
+        names = [r["name"] for r in collect(table, kind, page_size=3)]
+        expected = sorted(
+            rows, key=lambda r: (r["creation"] is not None, r["creation"] or "", r["name"])
+        )
+        assert names == [r["name"] for r in expected]
+        assert len(set(names)) == 12
+        assert any(r["limit_start"] != "0" for r in table.requests)
+
+    def test_a_null_creation_after_keyset_pages_still_reads_every_row(self, kind: str) -> None:
+        rows = make_rows([1, 1, 2, 3, 4])
+        rows.append({"name": "T-legacy", "creation": None, "status": "Open", "description": "x"})
+        table = Table(rows)
+        names = [r["name"] for r in collect(table, kind, page_size=2)]
+        assert sorted(names) == sorted(r["name"] for r in rows)
+        assert names[0] == "T-legacy"

@@ -85,3 +85,21 @@ def test_async_keyset_paging(tied: tuple[str, list[str]]) -> None:
             ]
 
     assert sorted(asyncio.run(scenario())) == sorted(names)
+
+
+def test_rows_without_creation_are_still_read_once(client: Client, marker: str) -> None:
+    names = client.insert_many("ToDo", [{"description": f"{marker} {i:02d}"} for i in range(20)])
+    set_creation("ToDo", names[:5], "NULL")
+    rows = client.get_list("ToDo", fields=["name", "creation"], filters=like(marker), limit=50)
+    assert sum(row["creation"] is None for row in rows) == 5
+
+    paged = [row["name"] for row in client.iter_list("ToDo", filters=like(marker), page_size=3)]
+
+    assert len(paged) == len(set(paged)) == 20
+    assert set(paged) == set(names)
+
+
+def test_no_fields_gives_names(client: Client, marker: str) -> None:
+    names = client.insert_many("ToDo", [{"description": f"{marker} {i}"} for i in range(4)])
+    rows = list(client.iter_list("ToDo", fields=[], filters=like(marker), page_size=3))
+    assert sorted(row["name"] for row in rows) == sorted(names)

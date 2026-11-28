@@ -100,7 +100,8 @@ All notable changes are recorded here. The format follows
   offset paging. The rows returned and their order are unchanged. Each
   page asks for the rows after the last `(creation, name)` pair, so rows
   that share a timestamp (child rows, bulk imports) cost the same as any
-  other.
+  other. Rows with no `creation` (written outside Frappe) sort first and
+  are read by offset paging, and `fields=[]` returns names as before.
 
 ## [0.2.0] - 2026-11-26
 
