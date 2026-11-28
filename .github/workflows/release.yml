@@ -90,3 +90,26 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
+
+  # Signs the published files with Sigstore (keyless, through this workflow's
+  # OIDC identity) and attaches them and their .sigstore.json bundles to the
+  # GitHub release, so anyone can verify a download came from this workflow.
+  sign-release:
+    name: sign and attach to the GitHub release
+    if: github.event_name == 'release'
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # OIDC token for Sigstore keyless signing
+      contents: write # upload assets to the GitHub release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
+        with:
+          inputs: >-
+            ./dist/*.tar.gz
+            ./dist/*.whl
+          release-signing-artifacts: true

@@ -42,6 +42,21 @@ Only the latest release receives security fixes.
   runs as its author wrote it, so it is a guard for your code rather than a
   permission: the API user's roles on the site remain the real limit.
 
+## Verifying a release
+
+Releases are built and published by GitHub Actions only: PyPI receives them
+through Trusted Publishing with a provenance attestation, and from 0.3.0
+the files are also signed with Sigstore and attached, with their
+`.sigstore.json` bundles, to the GitHub release. To check that a file came
+from this repository's release workflow:
+
+```bash
+python -m pip install sigstore
+python -m sigstore verify github \
+  --cert-identity "https://github.com/Padmapriyan27/frappex-client/.github/workflows/release.yml@refs/tags/v0.3.0" \
+  frappex_client-0.3.0-py3-none-any.whl
+```
+
 ## Your responsibilities
 
 - Keep the `httpx` logger at WARNING or above in production: at INFO it logs
